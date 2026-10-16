@@ -22,6 +22,12 @@ export default tseslint.config(
       "**/*.config.*",
       "planning/**",
       "scripts/**",
+      // Not built: written against a `webauthn_credentials` table that was
+      // never migrated. See the header comment on
+      // prisma-webauthn-credential-repository.ts.
+      "packages/mfa/infrastructure/persistence/prisma-webauthn-credential-repository.ts",
+      "packages/mfa/infrastructure/persistence/prisma-webauthn-credential-repository.spec.ts",
+      "packages/mfa/infrastructure/persistence/webauthn-credential-mapper.ts",
     ],
   },
   js.configs.recommended,
@@ -59,20 +65,43 @@ export default tseslint.config(
     // Package boundary enforcement: everything outside a context package
     // must go through its curated index.ts, never a deep path into its
     // domain/application internals — see docs/guides/domain-modeling.md
-    // ("Package encapsulation"). Scoped to exclude packages/identity itself,
-    // since its own internal files legitimately import each other by
-    // relative path; this rule targets deep imports from *other* packages.
+    // ("Package encapsulation"). Scoped to exclude packages/identity and
+    // packages/credentials themselves, since their own internal files
+    // legitimately import each other by relative path; this rule targets
+    // deep imports from *other* packages.
     files: ["**/*.ts"],
-    ignores: ["packages/identity/**", "packages/credentials/**", "packages/sessions/**"],
+    ignores: [
+      // A context package's own files legitimately reach their own internals.
+      "packages/identity/**",
+      "packages/credentials/**",
+      "packages/mfa/**",
+      "packages/sessions/**",
+      "packages/audit/**",
+      "packages/authorization/**",
+      "packages/verification/**",
+      // The integration suite deliberately exercises internals -- forging a
+      // forked chain entry to prove the repository refuses it, for one. That
+      // is the opposite of a production package quietly depending on them,
+      // which is what this rule exists to stop.
+      "tests/**",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
             {
-              group: ["@verixa/identity/*", "@verixa/credentials/*", "@verixa/sessions/*"],
+              group: [
+                "@verixa/audit/*",
+                "@verixa/authorization/*",
+                "@verixa/credentials/*",
+                "@verixa/identity/*",
+                "@verixa/mfa/*",
+                "@verixa/sessions/*",
+                "@verixa/verification/*",
+              ],
               message:
-                "Import from the package root (`@verixa/identity`, `@verixa/credentials`, `@verixa/sessions`), not a deep path — a context's domain/application internals are not part of its public API. See docs/guides/domain-modeling.md.",
+                "Import from the package root (`@verixa/identity`, `@verixa/credentials`, `@verixa/mfa`, `@verixa/sessions`, `@verixa/audit`, `@verixa/authorization`, `@verixa/verification`), not a deep path — a context's domain/application internals are not part of its public API. See docs/guides/domain-modeling.md.",
             },
           ],
         },

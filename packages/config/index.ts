@@ -57,6 +57,39 @@ const envSchema = z.object({
   DATABASE_POOL_TIMEOUT_SECONDS: z.coerce.number().int().positive().max(300).default(10),
 
   /**
+   * Connection string for the revocation-list store used by
+   * `@verixa/sessions`'s `RedisRevocationList` (Phase 05, Issue 096).
+   *
+   * Defaults to the instance `docker-compose.yml` provisions for local
+   * development — same reasoning as `DATABASE_URL`'s default. Was already
+   * documented in `.env.example` ahead of any code reading it; this is that
+   * code.
+   */
+  REDIS_URL: z.string().url().default("redis://localhost:6379"),
+
+  /**
+   * HMAC key `@verixa/sessions`'s `JwtTokenSigner` signs and verifies access
+   * tokens with (Issue 096).
+   *
+   * Unlike `DATABASE_URL`, this has **no default**. A database URL pointing
+   * at the wrong (but real) database is a mistake you notice; a signing key
+   * everyone's `.env.example` shares is a mistake you don't, because nothing
+   * about a session issued with it looks wrong until someone who copied the
+   * same public default forges one. Access tokens are bearer credentials —
+   * see `docs/security/token-storage.md` on why those get no free passes on
+   * secrecy just because a workflow is convenient. Every environment,
+   * including local development, generates its own with e.g. `openssl rand
+   * -base64 48`.
+   *
+   * 32 characters is a floor, not a target — it stops a trivially short
+   * placeholder from validating, not a guarantee of adequate entropy on its
+   * own. Phase 11 covers key management (rotation, storage) properly.
+   */
+  SESSION_ACCESS_TOKEN_SECRET: z
+    .string()
+    .min(32, "must be at least 32 characters — generate one with `openssl rand -base64 48`"),
+
+  /**
    * Maximum simultaneous active sessions a single user may hold (Issue 094).
    * Logging in past this limit evicts the least-recently-active session —
    * see `IssueSession` in `@verixa/sessions`.
@@ -70,6 +103,61 @@ const envSchema = z.object({
    * surprise anyone who has not deliberately opted in.
    */
   SESSION_MAX_CONCURRENT_SESSIONS: z.coerce.number().int().min(0).default(0),
+
+  // ---------------------------------------------------------------------------
+  // MFA enforcement — global defaults (Issue 114)
+  //
+  // These are the *global* defaults that apply when no org, role, or user
+  // override is present. Individual orgs and users can raise or lower the bar
+  // via runtime configuration stored in the database (not environment
+  // variables), because per-tenant config cannot live in environment variables
+  // — you would need one deployment per tenant if it did. The fields here give
+  // operators a baseline that matches their deployment's security posture
+  // without requiring every newly-created org to be individually configured.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Global default MFA enforcement level (Issue 114).
+   *
+   * - `optional` (default): users may enroll but are not required to. A
+   *   session is issued regardless. Safe for consumer-facing products where
+   *   mandating MFA would cause friction before users understand the value.
+   * - `required`: every user must complete an MFA challenge before a session
+   *   is issued. Choose this for admin consoles, banking-style products, or
+   *   any deployment where the threat model justifies the enrollment friction.
+   * - `disabled`: MFA is blocked globally. Useful when authentication is
+   *   delegated entirely to an external IdP that already enforces MFA and you
+   *   do not want a second factor in Verixa itself.
+   *
+   * Per-org and per-user overrides take precedence over this value; see
+   * `MfaEnforcementPolicy` in `packages/mfa`.
+   */
+  MFA_ENFORCEMENT_LEVEL: z.enum(["required", "optional", "disabled"]).default("optional"),
+
+  /**
+   * Comma-separated list of MFA method types permitted globally (Issue 114).
+   *
+   * Absent (empty string) means all types are permitted. Supply a list to
+   * restrict: e.g. `MFA_ALLOWED_METHODS=totp,webauthn` to ban backup codes
+   * org-wide when your security policy requires phishing-resistant factors.
+   *
+   * Valid values: `totp`, `webauthn`, `backup-codes`.
+   *
+   * The alternative — a separate boolean env var per method type — was
+   * rejected because it scales poorly (N env vars for N methods, combinatorial
+   * interactions) and cannot express "any subset of the three" cleanly.
+   */
+  MFA_ALLOWED_METHODS: z
+    .string()
+    .optional()
+    .transform((val) =>
+      val
+        ? val
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+    ),
 });
 
 /** The fully validated, immutable application configuration. */
