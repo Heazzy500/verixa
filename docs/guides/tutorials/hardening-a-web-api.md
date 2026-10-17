@@ -109,8 +109,9 @@ refresh tokens, API keys, or private keys. See
 
 If a secret leaks, deleting the line or rewriting Git history does not revoke
 it. Revoke it at the issuer, issue a replacement, update consumers, verify
-the previous value is rejected, and then clean up the exposed copy. See the
-[incident response runbook](../../security/incident-response-runbook.md).
+the previous value is rejected, and then clean up the exposed copy. Record the exposure and response in the
+project's private security-reporting channel, and notify affected deployment
+owners.
 
 ## 6. Make dependency updates reviewable
 
@@ -175,7 +176,7 @@ changes.
 
 ## Further reading
 
-- [`docs/security/incident-response-runbook.md`](../../security/incident-response-runbook.md)
+- [`docs/security/threat-register.md`](../../security/threat-register.md)
 - [`docs/security/authentication-flows.md`](../../security/authentication-flows.md)
 - [`docs/security/threat-register.md`](../../security/threat-register.md)
 - [`planning/issues/phase-11-security-hardening.md`](../../../planning/issues/phase-11-security-hardening.md)
