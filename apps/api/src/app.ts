@@ -1,4 +1,6 @@
 import { registerAdminAuthorizationRoutes } from "@verixa/authorization";
+import { fileURLToPath } from "node:url";
+
 import fastifySwagger from "@fastify/swagger";
 import fastifySwaggerUi from "@fastify/swagger-ui";
 import { createLogger, type Logger } from "@verixa/shared-kernel";
@@ -61,7 +63,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     app.register(fastifySwagger, {
       mode: "static",
       specification: {
-        path: "apps/api/openapi/openapi.yaml",
+        path: fileURLToPath(new URL("../openapi/openapi.yaml", import.meta.url)),
       },
     });
     app.register(fastifySwaggerUi, {
