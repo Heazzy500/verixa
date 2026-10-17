@@ -75,6 +75,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate OpenAPI contract
+        run: npx --yes @redocly/cli@2.53.3 lint --extends minimal apps/api/openapi/openapi.yaml
+
       # The Prisma client is generated, not committed (it's platform-specific
       # — see .gitignore), so it has to be generated before anything that
       # imports @verixa/database is built, typechecked, or tested. Same

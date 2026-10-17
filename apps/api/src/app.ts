@@ -1,4 +1,6 @@
 import { registerAdminAuthorizationRoutes } from "@verixa/authorization";
+import fastifySwagger from "@fastify/swagger";
+import fastifySwaggerUi from "@fastify/swagger-ui";
 import { createLogger, type Logger } from "@verixa/shared-kernel";
 import Fastify from "fastify";
 
@@ -54,6 +56,25 @@ export function buildApp(options: BuildAppOptions = {}) {
       },
     },
   });
+
+  if (process.env["NODE_ENV"] !== "production") {
+    app.register(fastifySwagger, {
+      mode: "static",
+      specification: {
+        path: "apps/api/openapi/openapi.yaml",
+      },
+    });
+    app.register(fastifySwaggerUi, {
+      routePrefix: "/docs",
+      staticCSP: true,
+      uiConfig: {
+        docExpansion: "list",
+        deepLinking: true,
+        url: "/docs/openapi.json",
+      },
+    });
+    app.get("/docs/openapi.json", () => app.swagger());
+  }
 
   app.get("/health", () => {
     // Deliberately does not touch the database. This answers "is this process
