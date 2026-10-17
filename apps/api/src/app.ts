@@ -64,6 +64,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       mode: "static",
       specification: {
         path: fileURLToPath(new URL("../openapi/openapi.yaml", import.meta.url)),
+        baseDir: fileURLToPath(new URL("../openapi", import.meta.url)),
       },
     });
     app.register(fastifySwaggerUi, {
